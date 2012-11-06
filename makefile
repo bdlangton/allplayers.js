@@ -23,7 +23,7 @@ docfiles = drupal.api.js/src/drupal.api.js\
 
 .DEFAULT_GOAL := all
 
-all: makecore jslint js jsdoc
+all: makecore jslint js
 
 makecore:
 	cd drupal.api.js; make -B; cd ..;
