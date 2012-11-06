@@ -64,7 +64,7 @@ allplayers.date = function(start, end, repeat) {
     else {
       return new Date();
     }
-  }
+  };
 
   /** The start date */
   this.start = this.newDate(start);
