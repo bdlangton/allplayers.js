@@ -727,7 +727,7 @@ drupal.api = function() {
 
       // See if we should cache the result.
       if (cache) {
-        this.cacheId = this.cacheId || cacheId.replace(/[^A-z0-9\-]/g, '');
+        this.cacheId = cacheId.replace(/[^A-z0-9\-]/g, '');
         var storage = drupal.retrieve(this.cacheId);
         if (storage && (storage.url === url)) {
           callback(storage.data);
