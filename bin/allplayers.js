@@ -2564,6 +2564,7 @@ var allplayers = allplayers || {};
         this.link.removeClass('collapsed').addClass('expanded');
         this.span.removeClass('collapsed').addClass('expanded');
         this.childlist.show('fast');
+        this.updateCheckedList();
       }
       // Only collapse if they can open it back up.
       else if (this.span.length > 0) {
@@ -2586,6 +2587,19 @@ var allplayers = allplayers || {};
     };
 
     /**
+     * Updated the list of checked nodes after a node is expanded.
+     *
+     * Makes sure that the expanded node doesn't have the 'include_children'
+     * flag set, and select all newly exposed children.
+     */
+    TreeNode.prototype.updateCheckedList = function() {
+      if (this.checked && this.include_children) {
+        this.include_children = false;
+        this.selectChildren(true);
+      }
+    };
+
+    /**
      * Selects all children of this node.
      *
      * @param {boolean} state The state of the selection or array of defaults.
@@ -2596,33 +2610,69 @@ var allplayers = allplayers || {};
       // See if the state is a boolean.
       var defaults = (typeof state == 'object');
 
-      // Load all nodes underneath this node.
-      this.loadAll(function() {
+      if (params.deepLoad) {
+
+        // Load all nodes underneath this node.
+        this.loadAll(function() {
+
+          // Say this node is now fully selected.
+          if (params.selected) {
+            params.selected(this, true);
+          }
+
+          // Set this node not busy.
+          this.setBusy(false, busyselecting);
+
+          // Say we are now done.
+          if (done) {
+            done.call(this);
+          }
+
+        }, function(node) {
+
+          var val = state;
+          if (defaults) {
+            val = state.hasOwnProperty(node.value);
+            val |= state.hasOwnProperty(node.id);
+          }
+
+          // Select this node.
+          node.select(val);
+        });
+      }
+      else {
+
+        // Select the current node.
+        var val = state;
+        if (defaults) {
+          val = state.hasOwnProperty(this.value);
+          val |= state.hasOwnProperty(this.id);
+        }
+        this.select(val);
+
+        // Not deep loading, so figure out if we should select children. We
+        // should load children if 1) the current node is expanded, or 2) the
+        // current node is being deselected and possibly has children selected
+        // below them.
+        if ((!val && !this.include_children) ||
+            this.link[0].className.indexOf('expanded') !== -1) {
+          this.include_children = false;
+          var i = this.children.length;
+          while (i--) {
+            this.children[i].selectChildren(state, done);
+          }
+        }
+        else {
+          // Not loading children, so flag this noad as including all children
+          // below.
+          this.include_children = true;
+        }
 
         // Say this node is now fully selected.
         if (params.selected) {
           params.selected(this, true);
         }
-
-        // Set this node not busy.
-        this.setBusy(false, busyselecting);
-
-        // Say we are now done.
-        if (done) {
-          done.call(this);
-        }
-
-      }, function(node) {
-
-        var val = state;
-        if (defaults) {
-          val = state.hasOwnProperty(node.value);
-          val |= state.hasOwnProperty(node.id);
-        }
-
-        // Select this node.
-        node.select(val);
-      });
+      }
     };
 
     /**
@@ -2698,8 +2748,10 @@ var allplayers = allplayers || {};
               // Set the checked state based on input.
               node.checked = $(event.target).is(':checked');
 
-              // Expand if checked.
-              node.expand(node.checked);
+              // Expand if deep loading. Collapse if unchecked.
+              if (!node.checked || params.deepLoad) {
+                node.expand(node.checked);
+              }
 
               // Call the select method.
               node.selectChildren(node.checked);
@@ -3386,7 +3438,12 @@ var allplayers = allplayers || {};
             var selected_choice = $('li#choice_' + node.id, choices);
 
             // Add the choice if not already added.
-            if (node.checked && (selected_choice.length == 0)) {
+            if (node.checked) {
+
+              // If the choice is already selected, remove it.
+              if (selected_choice.length != 0) {
+                selected_choice.remove();
+              }
 
               // Add this to the selected nodes.
               selectedNodes[node.id] = node;
@@ -3395,6 +3452,7 @@ var allplayers = allplayers || {};
 
               // If not selected, then remove the choice.
               selected_choice.remove();
+              $('input#include-below-' + node.id).remove();
             }
           }
 
@@ -3422,7 +3480,21 @@ var allplayers = allplayers || {};
               choice.eq(0)[0].nodeData = node;
 
               var span = $(document.createElement('span'));
-              span.text(node.title);
+              if (node.has_children &&
+                  node.link[0].className.indexOf('expanded') === -1) {
+                span.text(node.title + ' (All below)');
+                var hid = $(document.createElement('input'));
+                hid.attr({
+                  'type': 'hidden',
+                  'value': 'include-below-' + node.id,
+                  'id': 'include-below-' + node.id
+                });
+                this.display.append(hid);
+              }
+              else {
+                $('input#include-below-' + node.id).remove();
+                span.text(node.title);
+              }
 
               // Don't allow them to remove the root element unless it is
               // visible and has children.
