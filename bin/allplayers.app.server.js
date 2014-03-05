@@ -804,6 +804,30 @@ var allplayers = allplayers || {app: {}};
       );
     });
 
+    // The addCheckoutProduct message.
+    $.pm.bind('addCheckoutProduct', function(data) {
+
+      (new allplayers.product({uuid: data['product_uuid']})).getProduct(
+        data['product_uuid'],
+        function(result) {
+          // Check if the UUIDs match.
+          if (result && result.uuid == data['product_uuid']) {
+            // The product exists.
+          }
+          else {
+            // Need to create the product.
+            (new allplayers.product({uuid: data['product_uuid']}))
+              .createProduct(
+                data,
+                function(result) {
+                  var i = 0;
+                }
+              );
+          }
+        }
+      );
+    });
+
     // The remove product message.
     $.pm.bind('removeProduct', function(data) {
       var uuid = data['product_uuid'];

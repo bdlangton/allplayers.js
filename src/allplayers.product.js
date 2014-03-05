@@ -70,3 +70,30 @@ allplayers.product.prototype.getProduct = function(uuid, callback) {
   this.uri += '/api/v1/rest/products';
   this.api.get(this, uuid, '', callback);
 };
+
+/**
+ * Create a product.
+ *
+ * @param {object} data Data for the product to create.
+ * @param {function} callback The callback function.
+ */
+allplayers.product.prototype.createProduct = function(data, callback) {
+  // Get the store URL.
+  this.uri = 'https://' + window.location.host.replace('www', 'store');
+  this.uri += '/api/v1/rest';
+
+  // Get all of the necessary data.
+  data.type = 'product';
+  data.group_uuid = '';
+  data.role_id = 0;
+  data.role_name = 0;
+  data.installments_enabled = 0;
+  data.initial_payment = 0;
+  data.installments = 0;
+  data.total = data.price;
+  data.sku = 'abcd1234';
+  data.uri = this.uri;
+
+  // Create the product.
+  this.api.execute('products', data, callback);
+};
