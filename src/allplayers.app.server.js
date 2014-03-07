@@ -321,14 +321,52 @@ var allplayers = allplayers || {app: {}};
           // Check if the UUIDs match.
           if (result && result.uuid == data['product_uuid']) {
             // The product exists.
+            var uuid = data['product_uuid'];
+            var product = productInput(uuid).val();
+
+            // If a product was already found.
+            if (product) {
+
+              // Update the quantity.
+              product = JSON.parse(product);
+              product['quantity'] = parseInt(product['quantity']);
+              product['quantity'] += parseInt(data['quantity']);
+              productInput(uuid).val(JSON.stringify(product));
+              var productCol = '#adhoc-product-' + uuid;
+              $(productCol + ' td.quantity').text(product['quantity']);
+            }
+
+            // Make sure the product is valid.
+            else if (productValid(data)) {
+
+              // If it is a product with a value greater than $0, or price isn't
+              // supplied, use the price  assigned to the product in store.
+              if (
+                data['price'] == 'undefined' ||
+                (result.type == 'product' && result.price_raw > 0)
+              ) {
+                data['price'] = result.price_raw / 100;
+              }
+              data['price'] = accounting.formatMoney(data['price']);
+              data['title'] = result.title;
+
+              // Create the input for the new product.
+              $('<input>').attr({
+                type: 'hidden',
+                product: uuid,
+                name: 'add-product[]',
+                value: JSON.stringify(data)
+              }).appendTo('form#commerce-checkout-form-review');
+              addCheckoutProductInfo(data);
+            }
           }
           else {
             // Need to create the product.
             (new allplayers.product({uuid: data['product_uuid']}))
               .createProduct(
                 data,
-                function(result) {
-                  var i = 0;
+                function() {
+                  addCheckoutProductInfo(data);
                 }
               );
           }
@@ -395,6 +433,25 @@ var allplayers = allplayers || {app: {}};
         type: 'processCheckout',
         data: checkout
       });
+    };
+
+    /**
+     * Method to add the checkout product info to the table on the page.
+     *
+     * @param {object} product
+     *   The product to be added.
+     */
+    var addCheckoutProductInfo = function(product) {
+      // Add the product to the table.
+      $('.views-table tbody').append(
+        '<tr id="adhoc-product-' + product['product_uuid'] + '">' +
+          '<td class="title">' + product['title'] + '</td>' +
+          '<td class="seller">Seller</td>' +
+          '<td class="price">' + product['price'] + '</td>' +
+          '<td class="quantity">' + product['quantity'] + '</td>' +
+          '<td class="total">' + product['price'] + '</td>' +
+        '</tr>'
+      );
     };
   };
 }(window, document, window.allplayers, jQuery));
