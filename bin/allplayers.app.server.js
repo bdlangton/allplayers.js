@@ -807,63 +807,86 @@ var allplayers = allplayers || {app: {}};
     // The addCheckoutProduct message.
     $.pm.bind('addCheckoutProduct', function(data) {
 
-      (new allplayers.product({uuid: data['product_uuid']})).getProduct(
-        data['product_uuid'],
-        function(result) {
-          // Check if the UUIDs match.
-          if (result && result.uuid == data['product_uuid']) {
-            // The product exists.
-            var uuid = data['product_uuid'];
-            var product = productInput(uuid).val();
+      if (data && data['product_uuid']) {
+        (new allplayers.product({uuid: data['product_uuid']})).getProduct(
+          data['product_uuid'],
+          function(result) {
+            // Check if the UUIDs match.
+            if (result && result.uuid == data['product_uuid']) {
+              // The product exists.
+              var uuid = data['product_uuid'];
+              var product = productInput(uuid).val();
 
-            // If a product was already found.
-            if (product) {
+              // If a product was already found.
+              if (product) {
 
-              // Update the quantity.
-              product = JSON.parse(product);
-              product['quantity'] = parseInt(product['quantity']);
-              product['quantity'] += parseInt(data['quantity']);
-              productInput(uuid).val(JSON.stringify(product));
-              var productCol = '#adhoc-product-' + uuid;
-              $(productCol + ' td.quantity').text(product['quantity']);
-            }
-
-            // Make sure the product is valid.
-            else if (productValid(data)) {
-
-              // If it is a product with a value greater than $0, or price isn't
-              // supplied, use the price  assigned to the product in store.
-              if (
-                data['price'] == 'undefined' ||
-                (result.type == 'product' && result.price_raw > 0)
-              ) {
-                data['price'] = result.price_raw / 100;
+                // Update the quantity.
+                product = JSON.parse(product);
+                product['quantity'] = parseInt(product['quantity']);
+                product['quantity'] += parseInt(data['quantity']);
+                productInput(uuid).val(JSON.stringify(product));
+                var productCol = '#adhoc-product-' + uuid;
+                $(productCol + ' td.quantity').text(product['quantity']);
               }
-              data['price'] = accounting.formatMoney(data['price']);
-              data['title'] = result.title;
 
-              // Create the input for the new product.
-              $('<input>').attr({
-                type: 'hidden',
-                product: uuid,
-                name: 'add-product[]',
-                value: JSON.stringify(data)
-              }).appendTo('form#commerce-checkout-form-review');
-              addCheckoutProductInfo(data);
+              // Make sure the product is valid.
+              else if (productValid(data)) {
+
+                // If it is a product with a value greater than $0, or price
+                // isn't supplied, use the price  assigned to the product in
+                // store.
+                if (
+                  data['price'] == 'undefined' ||
+                  (result.type == 'product' && result.price_raw > 0)
+                ) {
+                  data['price'] = result.price_raw / 100;
+                  data['price_raw'] = result.price_raw;
+                }
+                data['price'] = accounting.formatMoney(data['price']);
+                data['title'] = result.title;
+
+                // Create the input for the new product.
+                $('<input>').attr({
+                  type: 'hidden',
+                  product: uuid,
+                  name: 'add-product[]',
+                  value: JSON.stringify(data)
+                }).appendTo('form#commerce-checkout-form-review');
+                addCheckoutProductInfo(data);
+              }
+            }
+            else {
+              alert('There was an error adding the product.');
             }
           }
-          else {
-            // Need to create the product.
-            (new allplayers.product({uuid: data['product_uuid']}))
-              .createProduct(
-                data,
-                function() {
-                  addCheckoutProductInfo(data);
-                }
-              );
-          }
-        }
-      );
+        );
+      }
+      else {
+        // Need to create the product.
+        (new allplayers.product({uuid: ''}))
+          .createProduct(
+            data,
+            function(result) {
+              if (result) {
+                data['price_raw'] = result.price_raw;
+                data['price'] = result.price_raw / 100;
+                data['price'] = accounting.formatMoney(data['price']);
+                data['product_uuid'] = result.uuid;
+                addCheckoutProductInfo(data);
+                (new allplayers.product({uuid: data['product_uuid']}))
+                  .addProductToCart(
+                    data,
+                    function(result) {
+                      var i = 0;
+                    }
+                  );
+              }
+              else {
+                alert('There was an error creating the product.');
+              }
+            }
+          );
+      }
     });
 
     // The remove product message.
@@ -934,6 +957,16 @@ var allplayers = allplayers || {app: {}};
      *   The product to be added.
      */
     var addCheckoutProductInfo = function(product) {
+      // Calculate the total price.
+      if (product['quantity'] == 1) {
+        product['total'] = product['price'];
+      }
+      else {
+        product['total'] = accounting.formatMoney(
+          product['price_raw'] * product['quantity'] / 100
+        );
+      }
+
       // Add the product to the table.
       $('.views-table tbody').append(
         '<tr id="adhoc-product-' + product['product_uuid'] + '">' +
@@ -941,9 +974,15 @@ var allplayers = allplayers || {app: {}};
           '<td class="seller">Seller</td>' +
           '<td class="price">' + product['price'] + '</td>' +
           '<td class="quantity">' + product['quantity'] + '</td>' +
-          '<td class="total">' + product['price'] + '</td>' +
+          '<td class="total">' + product['total'] + '</td>' +
         '</tr>'
       );
+
+      // Update the order total.
+      var total = $('td.component-total').text();
+      total = accounting.unformat(total) + (product['price_raw'] / 100);
+      total = accounting.formatMoney(total);
+      $('td.component-total').text(total);
     };
   };
 }(window, document, window.allplayers, jQuery));
