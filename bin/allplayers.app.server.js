@@ -862,8 +862,24 @@ var allplayers = allplayers || {app: {}};
         );
       }
       else {
-        // Need to create the product.
-        (new allplayers.product({uuid: ''}))
+        // Add raw price if not already there.
+        if (!data['price_raw']) {
+          data['price_raw'] = accounting.unformat(data['price']) * 100;
+        }
+
+        // Add the product info to the list of adhoc products to create.
+        addCheckoutProductInfo(data);
+        var adhocProducts = $('#add-adhoc-products').val();
+        if (adhocProducts) {
+          adhocProducts = JSON.parse(adhocProducts);
+        }
+        else {
+          adhocProducts = new Array();
+        }
+        adhocProducts.push(data);
+        $('#add-adhoc-products-7398').val(JSON.stringify(adhocProducts));
+        //$('#add-adhoc-products-7398').val('hi');
+        /*(new allplayers.product({uuid: ''}))
           .createProduct(
             data,
             function(result) {
@@ -885,7 +901,7 @@ var allplayers = allplayers || {app: {}};
                 alert('There was an error creating the product.');
               }
             }
-          );
+          );*/
       }
     });
 
@@ -965,6 +981,11 @@ var allplayers = allplayers || {app: {}};
         product['total'] = accounting.formatMoney(
           product['price_raw'] * product['quantity'] / 100
         );
+      }
+
+      // Add raw price if not already there.
+      if (!product['price_raw']) {
+        product['price_raw'] = accounting.unformat(product['price']) * 100;
       }
 
       // Add the product to the table.

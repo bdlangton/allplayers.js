@@ -370,30 +370,25 @@ var allplayers = allplayers || {app: {}};
         );
       }
       else {
-        // Need to create the product.
-        (new allplayers.product({uuid: ''}))
-          .createProduct(
-            data,
-            function(result) {
-              if (result) {
-                data['price_raw'] = result.price_raw;
-                data['price'] = result.price_raw / 100;
-                data['price'] = accounting.formatMoney(data['price']);
-                data['product_uuid'] = result.uuid;
-                addCheckoutProductInfo(data);
-                (new allplayers.product({uuid: data['product_uuid']}))
-                  .addProductToCart(
-                    data,
-                    function(result) {
-                      var i = 0;
-                    }
-                  );
-              }
-              else {
-                alert('There was an error creating the product.');
-              }
-            }
-          );
+        // Add raw price if not already there.
+        if (!data['price_raw']) {
+          data['price_raw'] = accounting.unformat(data['price']) * 100;
+        }
+
+        // Add the product info to the list of adhoc products to create.
+        // @todo If product exactly matches already added product, don't create
+        // a duplicate.
+        addCheckoutProductInfo(data);
+        var adhocProducts = $('#add-adhoc-products').val();
+        if (adhocProducts) {
+          adhocProducts = JSON.parse(adhocProducts);
+        }
+        else {
+          adhocProducts = new Array();
+        }
+        adhocProducts.push(data);
+        // @todo Don't hardcode order id
+        $('#add-adhoc-products-7398').val(JSON.stringify(adhocProducts));
       }
     });
 
@@ -473,6 +468,11 @@ var allplayers = allplayers || {app: {}};
         product['total'] = accounting.formatMoney(
           product['price_raw'] * product['quantity'] / 100
         );
+      }
+
+      // Add raw price if not already there.
+      if (!product['price_raw']) {
+        product['price_raw'] = accounting.unformat(product['price']) * 100;
       }
 
       // Add the product to the table.

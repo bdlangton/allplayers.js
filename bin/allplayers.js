@@ -2089,7 +2089,7 @@ allplayers.product.prototype.createProduct = function(data, callback) {
 };
 
 /**
- * Add a product as line item.
+ * Add a product as line item in the order.
  *
  * @param {object} data Data for the product to create.
  * @param {function} callback The callback function.
@@ -2100,7 +2100,7 @@ allplayers.product.prototype.addProductToCart = function(data, callback) {
   this.uri += '/api/v1/rest';
 
   // Get all of the necessary data.
-  // todo: get real user and group uuid.
+  // todo: get real user and sold by uuid.
   var line_item = new Object();
   line_item.for_user_uuid = '6470bc5a-92b1-11e3-aa40-6e5cf81170a9';
   line_item.product_uuid = data['product_uuid'];
